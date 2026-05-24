@@ -20,17 +20,31 @@ function helpText(): string {
     "Agent Spec",
     "",
     "Usage:",
-    "  agentspec init [workspace]",
-    "  agentspec sync [workspace]",
+    "  agentspec init [workspace] [--home <dir>]",
+    "  agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]",
     "  agentspec auth",
     "  agentspec doctor",
     "  agentspec --help",
   ].join("\n");
 }
 
+function optionValue(args: string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  if (index === -1) {
+    return undefined;
+  }
+
+  return args[index + 1];
+}
+
 export async function runCli(args: string[], io: CliIo = defaultIo): Promise<number> {
-  const [command, workspaceArg] = args;
+  const [command] = args;
+  const valueOptions = new Set(["--output-dir", "--home"]);
+  const workspaceArg = args.find(
+    (arg, index) => index > 0 && !arg.startsWith("--") && !valueOptions.has(args[index - 1] ?? ""),
+  );
   const workspace = resolve(workspaceArg ?? process.cwd());
+  const home = optionValue(args, "--home") ?? homedir();
 
   try {
     if (!command || command === "--help" || command === "-h") {
@@ -45,13 +59,18 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
     }
 
     if (command === "init") {
-      const result = await initCommand({ home: homedir(), workspace });
+      const result = await initCommand({ home, workspace });
       io.stdout(`Initialized ${result.createdRepository} with ${result.imported.length} imported files.`);
       return 0;
     }
 
     if (command === "sync") {
-      const result = await syncCommand({ home: homedir(), workspace });
+      const outputDir = optionValue(args, "--output-dir");
+      const result = await syncCommand({
+        home,
+        workspace,
+        outputDir: outputDir ? resolve(outputDir) : undefined,
+      });
       io.stdout(`Synced ${result.syncedTargets.length} target(s): ${result.syncedTargets.join(", ") || "none"}.`);
       return 0;
     }

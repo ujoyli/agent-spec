@@ -2,10 +2,12 @@ import { discoverTools } from "../core/discovery.js";
 import { applyCanonicalToTarget } from "../core/copy.js";
 import { defaultRunner, git, type CommandRunner } from "../core/github.js";
 import { targetMapping, type ToolName } from "../core/paths.js";
+import { join } from "node:path";
 
 export interface SyncOptions {
   home: string;
   workspace: string;
+  outputDir?: string;
   run?: CommandRunner;
 }
 
@@ -25,10 +27,10 @@ export async function syncCommand(options: SyncOptions): Promise<SyncResult> {
       continue;
     }
 
-    await applyCanonicalToTarget(options.workspace, tool.configDir, targetMapping(tool.name));
+    const targetDir = options.outputDir ? join(options.outputDir, tool.name) : tool.configDir;
+    await applyCanonicalToTarget(options.workspace, targetDir, targetMapping(tool.name));
     syncedTargets.push(tool.name);
   }
 
   return { syncedTargets };
 }
-

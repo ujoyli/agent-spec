@@ -49,4 +49,25 @@ describe("commands", () => {
     await expect(readFile(join(home, ".codex", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
     await expect(readFile(join(home, ".config", "opencode", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
   });
+
+  test("sync writes converted targets to output directory when provided", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    const outputDir = await mkdtemp(join(tmpdir(), "agentspec-cmd-output-"));
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await mkdir(join(home, ".config", "opencode"), { recursive: true });
+    await writeFile(join(workspace, "CLAUDE.md"), "Base prompt");
+
+    const result = await syncCommand({
+      home,
+      workspace,
+      outputDir,
+      run: async () => ({ code: 0, stdout: "", stderr: "" }),
+    });
+
+    expect(result.syncedTargets).toEqual(["codex", "opencode"]);
+    await expect(readFile(join(outputDir, "codex", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
+    await expect(readFile(join(outputDir, "opencode", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
+    await expect(readFile(join(home, ".codex", "AGENTS.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+  });
 });
