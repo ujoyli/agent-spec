@@ -1,0 +1,20 @@
+{
+  "name": "agent-spec",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "agentspec": "./dist/src/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:binary": "bun build ./src/cli.ts --compile --outfile ./dist-bin/agentspec",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

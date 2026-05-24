@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+import { homedir } from "node:os";
+import { resolve } from "node:path";
+import { authCommand } from "./commands/auth.js";
+import { initCommand } from "./commands/init.js";
+import { syncCommand } from "./commands/sync.js";
+
+export interface CliIo {
+  stdout: (line: string) => void;
+  stderr: (line: string) => void;
+}
+
+const defaultIo: CliIo = {
+  stdout: (line) => console.log(line),
+  stderr: (line) => console.error(line),
+};
+
+function helpText(): string {
+  return [
+    "Agent Spec",
+    "",
+    "Usage:",
+    "  agentspec init [workspace]",
+    "  agentspec sync [workspace]",
+    "  agentspec auth",
+    "  agentspec doctor",
+    "  agentspec --help",
+  ].join("\n");
+}
+
+export async function runCli(args: string[], io: CliIo = defaultIo): Promise<number> {
+  const [command, workspaceArg] = args;
+  const workspace = resolve(workspaceArg ?? process.cwd());
+
+  try {
+    if (!command || command === "--help" || command === "-h") {
+      io.stdout(helpText());
+      return 0;
+    }
+
+    if (command === "auth") {
+      await authCommand();
+      io.stdout("GitHub authentication completed.");
+      return 0;
+    }
+
+    if (command === "init") {
+      const result = await initCommand({ home: homedir(), workspace });
+      io.stdout(`Initialized ${result.createdRepository} with ${result.imported.length} imported files.`);
+      return 0;
+    }
+
+    if (command === "sync") {
+      const result = await syncCommand({ home: homedir(), workspace });
+      io.stdout(`Synced ${result.syncedTargets.length} target(s): ${result.syncedTargets.join(", ") || "none"}.`);
+      return 0;
+    }
+
+    if (command === "doctor") {
+      io.stdout("Agent Spec doctor is available. Detailed checks are coming next.");
+      return 0;
+    }
+
+    io.stderr(`Unknown command: ${command}\n\n${helpText()}`);
+    return 1;
+  } catch (error) {
+    io.stderr(error instanceof Error ? error.message : String(error));
+    return 1;
+  }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const code = await runCli(process.argv.slice(2));
+  process.exitCode = code;
+}
