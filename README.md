@@ -52,7 +52,7 @@ prompts/codex/AGENTS.md
 prompts/opencode/AGENTS.md
 ```
 
-Shared folders such as `skills/`, `mcp/`, and `plugins/` are copied into the workspace when present.
+Shared folders such as `skills/`, `mcp/`, and `plugins/` are also merged into the Claude-style workspace folders when present. This applies to both `init` and `update`, so changes made under Codex or OpenCode are still collected into the canonical Agent Spec repository.
 
 ### Sync
 
@@ -178,7 +178,7 @@ Implemented:
 - Tool discovery for Claude Code, Codex, and OpenCode.
 - Prompt merge into canonical `CLAUDE.md`.
 - Preservation of Codex/OpenCode prompt files.
-- Copying of `skills/`, `mcp/`, and `plugins/` when present.
+- Merging of `skills/`, `mcp/`, and `plugins/` into Claude-style workspace folders when present.
 - GitHub repository creation through `gh`.
 - Repository fallback naming.
 - `sync --output-dir` for safe inspection.
@@ -196,4 +196,3 @@ Not implemented yet:
 ## Design Notes
 
 See [PROPOSAL.md](./PROPOSAL.md) for the project proposal and longer-term direction.
-

@@ -110,6 +110,43 @@ describe("commands", () => {
     );
   });
 
+  test("update merges skills, mcp, and plugins from all tools into Claude-style workspace folders", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude", "skills", "review"), { recursive: true });
+    await mkdir(join(home, ".codex", "mcp"), { recursive: true });
+    await mkdir(join(home, ".config", "opencode", "plugins", "ship"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Claude prompt");
+    await writeFile(join(home, ".claude", "skills", "review", "SKILL.md"), "Review skill");
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+    await writeFile(join(home, ".codex", "mcp", "github.json"), "{\"server\":\"github\"}");
+    await writeFile(join(home, ".config", "opencode", "AGENTS.md"), "OpenCode prompt");
+    await writeFile(join(home, ".config", "opencode", "plugins", "ship", "plugin.json"), "{\"name\":\"ship\"}");
+
+    const result = await updateCommand({
+      home,
+      workspace,
+      run: async (command, args) => {
+        if (command === "git" && args.join(" ") === "status --porcelain") {
+          return { code: 0, stdout: "M CLAUDE.md\n", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.imported).toEqual(
+      expect.arrayContaining([
+        "CLAUDE.md",
+        "skills/review/SKILL.md",
+        "mcp/github.json",
+        "plugins/ship/plugin.json",
+      ]),
+    );
+    await expect(readFile(join(workspace, "skills", "review", "SKILL.md"), "utf8")).resolves.toBe("Review skill");
+    await expect(readFile(join(workspace, "mcp", "github.json"), "utf8")).resolves.toBe("{\"server\":\"github\"}");
+    await expect(readFile(join(workspace, "plugins", "ship", "plugin.json"), "utf8")).resolves.toBe("{\"name\":\"ship\"}");
+  });
+
   test("update skips commit and push when no files changed", async () => {
     const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
     const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
