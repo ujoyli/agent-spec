@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
 import { access, cp, mkdir, readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import type { TargetMapping } from "./paths.js";
+import type { TargetMapping, ToolPath } from "./paths.js";
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -59,6 +59,51 @@ export async function importClaudeBase(claudeDir: string, workspace: string): Pr
   return [...new Set(copied)].sort();
 }
 
+function promptNameForTool(tool: ToolPath): string {
+  return tool.name === "claude-code" ? "CLAUDE.md" : "AGENTS.md";
+}
+
+async function copyDirectoryContents(source: string, target: string, workspace: string): Promise<string[]> {
+  if (!(await exists(source))) {
+    return [];
+  }
+
+  await cp(source, target, { recursive: true });
+  return listFiles(target, workspace);
+}
+
+export async function importToolConfigs(tools: ToolPath[], workspace: string): Promise<string[]> {
+  const copied: string[] = [];
+  await mkdir(workspace, { recursive: true });
+
+  for (const tool of tools) {
+    const promptSource = join(tool.configDir, promptNameForTool(tool));
+    if (await exists(promptSource)) {
+      if (tool.name === "claude-code") {
+        await cp(promptSource, join(workspace, "CLAUDE.md"));
+        copied.push("CLAUDE.md");
+      } else {
+        const promptTarget = join(workspace, "prompts", tool.name, "AGENTS.md");
+        await mkdir(join(workspace, "prompts", tool.name), { recursive: true });
+        await cp(promptSource, promptTarget);
+        copied.push(toPortablePath(relative(workspace, promptTarget)));
+      }
+    }
+
+    for (const directory of ["skills", "mcp", "plugins"]) {
+      copied.push(
+        ...(await copyDirectoryContents(
+          join(tool.configDir, directory),
+          join(workspace, directory),
+          workspace,
+        )),
+      );
+    }
+  }
+
+  return [...new Set(copied)].sort();
+}
+
 export async function applyCanonicalToTarget(
   workspace: string,
   targetDir: string,
@@ -82,4 +127,3 @@ export async function applyCanonicalToTarget(
 
   return [...new Set(copied)].sort();
 }
-

@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
-import { applyCanonicalToTarget, importClaudeBase } from "../src/core/copy.js";
+import { applyCanonicalToTarget, importClaudeBase, importToolConfigs } from "../src/core/copy.js";
 
 describe("copy", () => {
   test("imports Claude-style files into a repository workspace", async () => {
@@ -35,5 +35,21 @@ describe("copy", () => {
     expect(copied).toEqual(["AGENTS.md", "skills/debug/SKILL.md"]);
     await expect(readFile(join(target, "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
     await expect(readFile(join(target, "skills", "debug", "SKILL.md"), "utf8")).resolves.toBe("Debug skill");
+  });
+
+  test("imports non-Claude tool configs without requiring Claude", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-copy-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-copy-workspace-"));
+    await mkdir(join(home, ".codex", "skills", "debug"), { recursive: true });
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+    await writeFile(join(home, ".codex", "skills", "debug", "SKILL.md"), "Debug skill");
+
+    const copied = await importToolConfigs(
+      [{ name: "codex", configDir: join(home, ".codex") }],
+      workspace,
+    );
+
+    expect(copied).toEqual(["prompts/codex/AGENTS.md", "skills/debug/SKILL.md"]);
+    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
   });
 });

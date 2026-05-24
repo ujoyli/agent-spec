@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { authCommand } from "./commands/auth.js";
 import { initCommand } from "./commands/init.js";
 import { syncCommand } from "./commands/sync.js";
+import { updateCommand } from "./commands/update.js";
 
 export interface CliIo {
   stdout: (line: string) => void;
@@ -21,6 +22,7 @@ function helpText(): string {
     "",
     "Usage:",
     "  agentspec init [workspace] [--home <dir>]",
+    "  agentspec update [workspace] [--home <dir>]",
     "  agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]",
     "  agentspec auth",
     "  agentspec doctor",
@@ -61,6 +63,13 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
     if (command === "init") {
       const result = await initCommand({ home, workspace });
       io.stdout(`Initialized ${result.createdRepository} with ${result.imported.length} imported files.`);
+      return 0;
+    }
+
+    if (command === "update") {
+      const result = await updateCommand({ home, workspace });
+      const status = result.changed ? "Updated" : "No changes found after scanning";
+      io.stdout(`${status} agent spec config with ${result.imported.length} imported files.`);
       return 0;
     }
 

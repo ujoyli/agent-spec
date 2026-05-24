@@ -6,7 +6,7 @@ import {
   git,
   type CommandRunner,
 } from "../core/github.js";
-import { importClaudeBase } from "../core/copy.js";
+import { importToolConfigs } from "../core/copy.js";
 import { writeState } from "../core/state.js";
 
 export interface InitOptions {
@@ -23,14 +23,13 @@ export interface InitResult {
 export async function initCommand(options: InitOptions): Promise<InitResult> {
   const run = options.run ?? defaultRunner;
   const tools = await discoverTools(options.home);
-  const claude = tools.find((tool) => tool.name === "claude-code");
 
-  if (!claude) {
-    throw new Error("Claude Code configuration was not found. Create ~/.claude first or import it manually.");
+  if (tools.length === 0) {
+    throw new Error("No supported agent configuration was found. Create Claude Code, Codex, or OpenCode config first.");
   }
 
   await mkdir(options.workspace, { recursive: true });
-  const imported = await importClaudeBase(claude.configDir, options.workspace);
+  const imported = await importToolConfigs(tools, options.workspace);
   const repository = await createRepositoryWithFallback("agent-spec", run);
 
   await writeState(options.workspace, {
@@ -53,4 +52,3 @@ export async function initCommand(options: InitOptions): Promise<InitResult> {
     imported,
   };
 }
-

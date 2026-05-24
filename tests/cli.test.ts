@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import { runCli } from "../src/cli.js";
 import * as syncModule from "../src/commands/sync.js";
+import * as updateModule from "../src/commands/update.js";
 
 describe("runCli", () => {
   test("prints help for --help", async () => {
@@ -57,5 +58,27 @@ describe("runCli", () => {
     );
 
     sync.mockRestore();
+  });
+
+  test("passes --home override to update command", async () => {
+    const update = vi.spyOn(updateModule, "updateCommand").mockResolvedValue({
+      imported: ["CLAUDE.md"],
+      changed: true,
+    });
+
+    const code = await runCli(["update", "/tmp/workspace", "--home", "/tmp/home"], {
+      stdout: () => undefined,
+      stderr: () => undefined,
+    });
+
+    expect(code).toBe(0);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        home: "/tmp/home",
+        workspace: "/tmp/workspace",
+      }),
+    );
+
+    update.mockRestore();
   });
 });

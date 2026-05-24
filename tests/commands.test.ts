@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
 import { initCommand } from "../src/commands/init.js";
 import { syncCommand } from "../src/commands/sync.js";
+import { updateCommand } from "../src/commands/update.js";
 
 describe("commands", () => {
   test("init imports Claude base, creates repository, and writes state", async () => {
@@ -30,6 +31,102 @@ describe("commands", () => {
     expect(result.imported).toContain("CLAUDE.md");
     await expect(readFile(join(workspace, ".agent-spec.json"), "utf8")).resolves.toContain("agent-spec");
     expect(calls.some((call) => call.join(" ") === "git add .")).toBe(true);
+  });
+
+  test("init merges Claude Code, Codex, and OpenCode config into the workspace", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude", "skills", "review"), { recursive: true });
+    await mkdir(join(home, ".codex", "skills", "debug"), { recursive: true });
+    await mkdir(join(home, ".config", "opencode", "skills", "ship"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Claude prompt");
+    await writeFile(join(home, ".claude", "skills", "review", "SKILL.md"), "Review skill");
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+    await writeFile(join(home, ".codex", "skills", "debug", "SKILL.md"), "Debug skill");
+    await writeFile(join(home, ".config", "opencode", "AGENTS.md"), "OpenCode prompt");
+    await writeFile(join(home, ".config", "opencode", "skills", "ship", "SKILL.md"), "Ship skill");
+
+    const result = await initCommand({
+      home,
+      workspace,
+      run: async (command) => {
+        if (command === "gh") {
+          return { code: 0, stdout: "https://github.com/octo/agent-spec.git\n", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.imported).toEqual(
+      expect.arrayContaining([
+        "CLAUDE.md",
+        "prompts/codex/AGENTS.md",
+        "prompts/opencode/AGENTS.md",
+        "skills/review/SKILL.md",
+        "skills/debug/SKILL.md",
+        "skills/ship/SKILL.md",
+      ]),
+    );
+    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toBe("Claude prompt");
+    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
+    await expect(readFile(join(workspace, "skills", "debug", "SKILL.md"), "utf8")).resolves.toBe("Debug skill");
+  });
+
+  test("update rescans configs, merges them, commits, and pushes", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude"), { recursive: true });
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Updated Claude prompt");
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Updated Codex prompt");
+
+    const calls: string[][] = [];
+    const result = await updateCommand({
+      home,
+      workspace,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        if (command === "git" && args.join(" ") === "status --porcelain") {
+          return { code: 0, stdout: "M CLAUDE.md\n", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.imported).toEqual(expect.arrayContaining(["CLAUDE.md", "prompts/codex/AGENTS.md"]));
+    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toBe("Updated Claude prompt");
+    expect(calls.map((call) => call.join(" "))).toEqual(
+      expect.arrayContaining([
+        "git pull --ff-only",
+        "git add .",
+        "git commit -m chore: update agent spec config",
+        "git push",
+      ]),
+    );
+  });
+
+  test("update skips commit and push when no files changed", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Same prompt");
+
+    const calls: string[][] = [];
+    const result = await updateCommand({
+      home,
+      workspace,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        if (command === "git" && args.join(" ") === "status --porcelain") {
+          return { code: 0, stdout: "", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.changed).toBe(false);
+    expect(calls.map((call) => call.join(" "))).not.toContain("git commit -m chore: update agent spec config");
+    expect(calls.map((call) => call.join(" "))).not.toContain("git push");
   });
 
   test("sync applies canonical config to discovered Codex and OpenCode targets", async () => {
