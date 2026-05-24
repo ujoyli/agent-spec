@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { access, cp, mkdir, readdir } from "node:fs/promises";
+import { access, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import type { TargetMapping, ToolPath } from "./paths.js";
 
@@ -63,6 +63,23 @@ function promptNameForTool(tool: ToolPath): string {
   return tool.name === "claude-code" ? "CLAUDE.md" : "AGENTS.md";
 }
 
+function promptTitleForTool(tool: ToolPath): string {
+  if (tool.name === "claude-code") {
+    return "Claude Code";
+  }
+  if (tool.name === "codex") {
+    return "Codex";
+  }
+  return "OpenCode";
+}
+
+function mergedPrompt(sections: Array<{ title: string; text: string }>): string {
+  return sections
+    .filter((section) => section.text.trim().length > 0)
+    .map((section) => `## From ${section.title}\n\n${section.text.trim()}`)
+    .join("\n\n");
+}
+
 async function copyDirectoryContents(source: string, target: string, workspace: string): Promise<string[]> {
   if (!(await exists(source))) {
     return [];
@@ -74,13 +91,16 @@ async function copyDirectoryContents(source: string, target: string, workspace: 
 
 export async function importToolConfigs(tools: ToolPath[], workspace: string): Promise<string[]> {
   const copied: string[] = [];
+  const promptSections: Array<{ title: string; text: string }> = [];
   await mkdir(workspace, { recursive: true });
 
   for (const tool of tools) {
     const promptSource = join(tool.configDir, promptNameForTool(tool));
     if (await exists(promptSource)) {
+      const promptText = await readFile(promptSource, "utf8");
+      promptSections.push({ title: promptTitleForTool(tool), text: promptText });
+
       if (tool.name === "claude-code") {
-        await cp(promptSource, join(workspace, "CLAUDE.md"));
         copied.push("CLAUDE.md");
       } else {
         const promptTarget = join(workspace, "prompts", tool.name, "AGENTS.md");
@@ -99,6 +119,12 @@ export async function importToolConfigs(tools: ToolPath[], workspace: string): P
         )),
       );
     }
+  }
+
+  const prompt = mergedPrompt(promptSections);
+  if (prompt.length > 0) {
+    await writeFile(join(workspace, "CLAUDE.md"), `${prompt}\n`);
+    copied.push("CLAUDE.md");
   }
 
   return [...new Set(copied)].sort();

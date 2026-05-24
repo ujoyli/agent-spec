@@ -67,7 +67,10 @@ describe("commands", () => {
         "skills/ship/SKILL.md",
       ]),
     );
-    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toBe("Claude prompt");
+    const mergedPrompt = await readFile(join(workspace, "CLAUDE.md"), "utf8");
+    expect(mergedPrompt).toContain("Claude prompt");
+    expect(mergedPrompt).toContain("Codex prompt");
+    expect(mergedPrompt).toContain("OpenCode prompt");
     await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
     await expect(readFile(join(workspace, "skills", "debug", "SKILL.md"), "utf8")).resolves.toBe("Debug skill");
   });
@@ -94,7 +97,9 @@ describe("commands", () => {
     });
 
     expect(result.imported).toEqual(expect.arrayContaining(["CLAUDE.md", "prompts/codex/AGENTS.md"]));
-    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toBe("Updated Claude prompt");
+    const mergedPrompt = await readFile(join(workspace, "CLAUDE.md"), "utf8");
+    expect(mergedPrompt).toContain("Updated Claude prompt");
+    expect(mergedPrompt).toContain("Updated Codex prompt");
     expect(calls.map((call) => call.join(" "))).toEqual(
       expect.arrayContaining([
         "git pull --ff-only",

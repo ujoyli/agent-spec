@@ -49,7 +49,31 @@ describe("copy", () => {
       workspace,
     );
 
-    expect(copied).toEqual(["prompts/codex/AGENTS.md", "skills/debug/SKILL.md"]);
+    expect(copied).toEqual(["CLAUDE.md", "prompts/codex/AGENTS.md", "skills/debug/SKILL.md"]);
     await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
+    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toContain("Codex prompt");
+  });
+
+  test("merges prompt text from multiple tools into CLAUDE.md", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-copy-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-copy-workspace-"));
+    await mkdir(join(home, ".claude"), { recursive: true });
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Claude prompt");
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+
+    await importToolConfigs(
+      [
+        { name: "claude-code", configDir: join(home, ".claude") },
+        { name: "codex", configDir: join(home, ".codex") },
+      ],
+      workspace,
+    );
+
+    const mergedPrompt = await readFile(join(workspace, "CLAUDE.md"), "utf8");
+    expect(mergedPrompt).toContain("Claude prompt");
+    expect(mergedPrompt).toContain("Codex prompt");
+    expect(mergedPrompt).toContain("## From Claude Code");
+    expect(mergedPrompt).toContain("## From Codex");
   });
 });
