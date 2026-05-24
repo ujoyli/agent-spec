@@ -209,4 +209,34 @@ describe("commands", () => {
     await expect(readFile(join(outputDir, "opencode", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
     await expect(readFile(join(home, ".codex", "AGENTS.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
+
+  test("sync writes merged canonical skills, mcp, and plugins to target tools", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    const outputDir = await mkdtemp(join(tmpdir(), "agentspec-cmd-output-"));
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await mkdir(join(home, ".config", "opencode"), { recursive: true });
+    await mkdir(join(workspace, "skills", "review"), { recursive: true });
+    await mkdir(join(workspace, "mcp"), { recursive: true });
+    await mkdir(join(workspace, "plugins", "ship"), { recursive: true });
+    await writeFile(join(workspace, "CLAUDE.md"), "Merged prompt");
+    await writeFile(join(workspace, "skills", "review", "SKILL.md"), "Review skill");
+    await writeFile(join(workspace, "mcp", "github.json"), "{\"server\":\"github\"}");
+    await writeFile(join(workspace, "plugins", "ship", "plugin.json"), "{\"name\":\"ship\"}");
+
+    const result = await syncCommand({
+      home,
+      workspace,
+      outputDir,
+      run: async () => ({ code: 0, stdout: "", stderr: "" }),
+    });
+
+    expect(result.syncedTargets).toEqual(["codex", "opencode"]);
+    await expect(readFile(join(outputDir, "codex", "AGENTS.md"), "utf8")).resolves.toBe("Merged prompt");
+    await expect(readFile(join(outputDir, "codex", "skills", "review", "SKILL.md"), "utf8")).resolves.toBe("Review skill");
+    await expect(readFile(join(outputDir, "codex", "mcp", "github.json"), "utf8")).resolves.toBe("{\"server\":\"github\"}");
+    await expect(readFile(join(outputDir, "codex", "plugins", "ship", "plugin.json"), "utf8")).resolves.toBe("{\"name\":\"ship\"}");
+    await expect(readFile(join(outputDir, "opencode", "mcp", "github.json"), "utf8")).resolves.toBe("{\"server\":\"github\"}");
+    await expect(readFile(join(outputDir, "opencode", "plugins", "ship", "plugin.json"), "utf8")).resolves.toBe("{\"name\":\"ship\"}");
+  });
 });

@@ -144,11 +144,19 @@ export async function applyCanonicalToTarget(
     copied.push(mapping.promptFile);
   }
 
-  const skillsSource = join(workspace, "skills");
-  if (await exists(skillsSource)) {
-    await cp(skillsSource, join(targetDir, mapping.skillsDir), { recursive: true });
-    const files = await listFiles(join(targetDir, mapping.skillsDir), targetDir);
-    copied.push(...files);
+  const directories = [
+    { source: "skills", target: mapping.skillsDir },
+    { source: "mcp", target: "mcp" },
+    { source: "plugins", target: "plugins" },
+  ];
+
+  for (const directory of directories) {
+    const source = join(workspace, directory.source);
+    if (await exists(source)) {
+      await cp(source, join(targetDir, directory.target), { recursive: true });
+      const files = await listFiles(join(targetDir, directory.target), targetDir);
+      copied.push(...files);
+    }
   }
 
   return [...new Set(copied)].sort();
