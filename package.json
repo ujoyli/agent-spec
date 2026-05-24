@@ -1,14 +1,38 @@
 {
   "name": "agent-spec",
   "version": "0.1.0",
-  "private": true,
+  "description": "CLI for managing and syncing AI agent prompts, skills, MCP, and plugin configuration across tools.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ujoyli/agent-spec.git"
+  },
+  "homepage": "https://github.com/ujoyli/agent-spec#readme",
+  "bugs": {
+    "url": "https://github.com/ujoyli/agent-spec/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "codex",
+    "claude",
+    "opencode",
+    "mcp",
+    "cli"
+  ],
   "type": "module",
   "bin": {
     "agentspec": "./dist/src/cli.js"
   },
+  "files": [
+    "dist/src",
+    "README.md",
+    "PROPOSAL.md"
+  ],
   "scripts": {
     "build": "tsc",
     "build:binary": "bun build ./src/cli.ts --compile --outfile ./dist-bin/agentspec",
+    "prepublishOnly": "npm test && npm run build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
