@@ -22,7 +22,7 @@
   ],
   "type": "module",
   "bin": {
-    "agentspec": "./dist/src/cli.js"
+    "agentspec": "dist/src/cli.js"
   },
   "files": [
     "dist/src",
