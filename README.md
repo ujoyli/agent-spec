@@ -123,7 +123,7 @@ agentspec --help
 
 Scans supported local tool configuration, merges it into an Agent Spec workspace, creates a GitHub repository, commits the initial files, and pushes them.
 
-The default repository name is `agent-spec`. If that repository already exists, Agent Spec treats it as an existing remote configuration repository and clones it into the requested workspace instead of creating a numbered fallback.
+The default repository name is `agent-spec`. If that repository already exists and looks like an Agent Spec configuration repository, Agent Spec clones it into the requested workspace. If it exists but appears to be a source repository or another unrelated project, Agent Spec falls back to numbered names such as `agent-spec-01`, `agent-spec-02`, and so on.
 
 ```bash
 agentspec init ~/agent-spec

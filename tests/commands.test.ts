@@ -54,6 +54,10 @@ describe("commands", () => {
             stderr: "",
           };
         }
+        if (command === "git" && args.join(" ") === `clone https://github.com/octo/agent-spec ${workspace}`) {
+          await writeFile(join(workspace, ".agent-spec.json"), "{\"repository\":{\"name\":\"agent-spec\"}}");
+          return { code: 0, stdout: "", stderr: "" };
+        }
         return { code: 0, stdout: "", stderr: "" };
       },
     });
@@ -68,6 +72,47 @@ describe("commands", () => {
     );
     expect(calls).toContainEqual(["git", "clone", "https://github.com/octo/agent-spec", workspace]);
     expect(calls.some((call) => call.join(" ") === "gh repo create agent-spec-01 --private")).toBe(false);
+  });
+
+  test("init falls back to numbered repository when existing agent-spec is not a config repository", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Base prompt");
+
+    const calls: string[][] = [];
+    const result = await initCommand({
+      home,
+      workspace,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        if (command === "gh" && args.join(" ") === "repo create agent-spec --private") {
+          return { code: 1, stdout: "", stderr: "name already exists" };
+        }
+        if (command === "gh" && args.join(" ") === "repo view agent-spec --json name,url") {
+          return {
+            code: 0,
+            stdout: "{\"name\":\"agent-spec\",\"url\":\"https://github.com/octo/agent-spec\"}\n",
+            stderr: "",
+          };
+        }
+        if (command === "git" && args.join(" ") === `clone https://github.com/octo/agent-spec ${workspace}`) {
+          await writeFile(join(workspace, "package.json"), "{\"name\":\"source-repo\"}");
+          return { code: 0, stdout: "", stderr: "" };
+        }
+        if (command === "gh" && args.join(" ") === "repo create agent-spec-01 --private") {
+          return { code: 0, stdout: "https://github.com/octo/agent-spec-01.git\n", stderr: "" };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.mode).toBe("created");
+    expect(result.createdRepository).toBe("agent-spec-01");
+    expect(result.imported).toContain("CLAUDE.md");
+    await expect(readFile(join(workspace, "package.json"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toContain("Base prompt");
+    expect(calls).toContainEqual(["gh", "repo", "create", "agent-spec-01", "--private"]);
   });
 
   test("init merges Claude Code, Codex, and OpenCode config into the workspace", async () => {

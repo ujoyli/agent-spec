@@ -183,7 +183,7 @@ agentspec doctor
 agentspec auth
 ```
 
-`agentspec init` should scan local Claude Code, Codex, and OpenCode configuration directories, normalize what it can into the Claude-based repository shape, create or connect a GitHub repository, commit the first version, and push it. If the default repository already exists, `init` should recover it locally and behave like the first pull path instead of creating a numbered fallback.
+`agentspec init` should scan local Claude Code, Codex, and OpenCode configuration directories, normalize what it can into the Claude-based repository shape, create or connect a GitHub repository, commit the first version, and push it. If the default repository already exists and looks like an Agent Spec configuration repository, `init` should recover it locally and behave like the first pull path. If it exists but appears to be a source repository or unrelated project, `init` should fall back to numbered repository names.
 
 `agentspec push` should scan local tool configuration, merge it into the canonical workspace, commit changed files, and push the repository.
 
@@ -209,7 +209,7 @@ For the MVP:
 - If the user is not authenticated, the CLI should guide them to run `gh auth login` or delegate through `agentspec auth`.
 - If the user does not already have a repository configured, Agent Spec should create one.
 - The default repository name should be `agent-spec`.
-- If `agent-spec` already exists, the CLI should treat it as the user's existing Agent Spec repository and pull it locally.
+- If `agent-spec` already exists, the CLI should inspect whether it looks like an Agent Spec configuration repository. If it does, pull it locally. If it does not, try numbered fallback names such as `agent-spec-01`.
 - The selected repository name should be stored locally so future commands know where to sync.
 
 ## Proposed Desktop UI
@@ -256,7 +256,7 @@ Proposed MVP:
 - Detect local Claude Code, Codex, and OpenCode configuration directories.
 - Import discovered configuration into a Claude-based repository layout.
 - Create a GitHub repository through `gh`, defaulting to `agent-spec`.
-- Recover the existing `agent-spec` repository when it already exists.
+- Recover the existing `agent-spec` repository when it already exists and looks like a configuration repository; otherwise fall back to a numbered repository.
 - Commit and push the initial configuration.
 - Pull and apply repository changes to supported local tools.
 - Write clear documentation and examples.
