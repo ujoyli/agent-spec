@@ -69,6 +69,13 @@ npm install
 npm run build
 ```
 
+Install from npm:
+
+```bash
+npm install -g @eddyli1989/agent-spec
+agentspec --help
+```
+
 Run the compiled CLI:
 
 ```bash

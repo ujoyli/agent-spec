@@ -1,5 +1,5 @@
 {
-  "name": "agent-spec",
+  "name": "@eddyli1989/agent-spec",
   "version": "0.1.0",
   "description": "CLI for managing and syncing AI agent prompts, skills, MCP, and plugin configuration across tools.",
   "license": "MIT",
