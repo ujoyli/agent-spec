@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, test } from "vitest";
@@ -75,5 +75,45 @@ describe("copy", () => {
     expect(mergedPrompt).toContain("Codex prompt");
     expect(mergedPrompt).toContain("## From Claude Code");
     expect(mergedPrompt).toContain("## From Codex");
+  });
+
+  test("skips cache directories and large runtime files when importing configs", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-copy-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-copy-workspace-"));
+    await mkdir(join(home, ".codex", "plugins", "cache", "runtime"), { recursive: true });
+    await mkdir(join(home, ".codex", "plugins", "custom-plugin"), { recursive: true });
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+    await writeFile(join(home, ".codex", "plugins", "cache", "runtime", "node"), "runtime");
+    await writeFile(join(home, ".codex", "plugins", "custom-plugin", "plugin.json"), "{\"name\":\"custom\"}");
+    await writeFile(join(home, ".codex", "plugins", "custom-plugin", "big.bin"), Buffer.alloc(6 * 1024 * 1024));
+
+    const copied = await importToolConfigs(
+      [{ name: "codex", configDir: join(home, ".codex") }],
+      workspace,
+    );
+
+    expect(copied).toContain("plugins/custom-plugin/plugin.json");
+    expect(copied).not.toContain("plugins/cache/runtime/node");
+    expect(copied).not.toContain("plugins/custom-plugin/big.bin");
+    await expect(readFile(join(workspace, "plugins", "custom-plugin", "plugin.json"), "utf8")).resolves.toBe("{\"name\":\"custom\"}");
+    await expect(readFile(join(workspace, "plugins", "cache", "runtime", "node"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(join(workspace, "plugins", "custom-plugin", "big.bin"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  test("skips dangling symlinks when importing configs", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-copy-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-copy-workspace-"));
+    await mkdir(join(home, ".claude", "skills"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Claude prompt");
+    await symlink(join(home, "missing-skill"), join(home, ".claude", "skills", "missing"));
+
+    const copied = await importToolConfigs(
+      [{ name: "claude-code", configDir: join(home, ".claude") }],
+      workspace,
+    );
+
+    expect(copied).toContain("CLAUDE.md");
+    expect(copied).not.toContain("skills/missing");
+    await expect(readFile(join(workspace, "skills", "missing"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

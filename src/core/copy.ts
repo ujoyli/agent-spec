@@ -1,7 +1,17 @@
 import { constants } from "node:fs";
-import { access, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, cp, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import type { TargetMapping, ToolPath } from "./paths.js";
+
+const ignoredDirectoryNames = new Set([
+  ".git",
+  ".venv",
+  "cache",
+  "dist",
+  "node_modules",
+]);
+
+const maxImportedFileBytes = 5 * 1024 * 1024;
 
 async function exists(path: string): Promise<boolean> {
   try {
@@ -34,6 +44,36 @@ async function listFiles(root: string, base = root): Promise<string[]> {
   }
 
   return files.sort();
+}
+
+function hasIgnoredPathSegment(path: string): boolean {
+  return path.split(sep).some((segment) => ignoredDirectoryNames.has(segment));
+}
+
+async function shouldCopyPath(source: string): Promise<boolean> {
+  if (hasIgnoredPathSegment(source)) {
+    return false;
+  }
+
+  let sourceStat;
+  try {
+    sourceStat = await lstat(source);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+
+  if (sourceStat.isSymbolicLink()) {
+    return false;
+  }
+
+  if (sourceStat.isFile() && sourceStat.size > maxImportedFileBytes) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function importClaudeBase(claudeDir: string, workspace: string): Promise<string[]> {
@@ -85,7 +125,10 @@ async function copyDirectoryContents(source: string, target: string, workspace: 
     return [];
   }
 
-  await cp(source, target, { recursive: true });
+  await cp(source, target, {
+    recursive: true,
+    filter: shouldCopyPath,
+  });
   return listFiles(target, workspace);
 }
 
