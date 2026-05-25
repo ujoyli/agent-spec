@@ -41,31 +41,26 @@ function ensureSuccess(result: CommandResult, message: string): void {
   }
 }
 
-function repoName(base: string, index: number): string {
-  if (index === 0) {
-    return base;
-  }
-  return `${base}-${String(index).padStart(2, "0")}`;
-}
-
 export async function ghAuthLogin(run: CommandRunner = defaultRunner): Promise<void> {
   ensureSuccess(await run("gh", ["auth", "login"]), "GitHub authentication failed");
 }
 
-export async function createRepositoryWithFallback(
+export async function createRepository(
   baseName: string,
   run: CommandRunner = defaultRunner,
-  maxAttempts = 20,
 ): Promise<{ name: string; url: string }> {
-  for (let index = 0; index < maxAttempts; index += 1) {
-    const name = repoName(baseName, index);
-    const result = await run("gh", ["repo", "create", name, "--private"]);
-    if (result.code === 0) {
-      return { name, url: result.stdout.trim() };
-    }
-  }
+  const result = await run("gh", ["repo", "create", baseName, "--private"]);
+  ensureSuccess(result, `Could not create GitHub repository ${baseName}`);
+  return { name: baseName, url: result.stdout.trim() };
+}
 
-  throw new Error(`Could not create a GitHub repository after ${maxAttempts} attempts.`);
+export async function viewRepository(
+  name: string,
+  run: CommandRunner = defaultRunner,
+): Promise<{ name: string; url: string }> {
+  const result = await run("gh", ["repo", "view", name, "--json", "name,url"]);
+  ensureSuccess(result, `Could not view GitHub repository ${name}`);
+  return JSON.parse(result.stdout) as { name: string; url: string };
 }
 
 export async function git(run: CommandRunner, cwd: string, args: string[]): Promise<void> {

@@ -33,6 +33,43 @@ describe("commands", () => {
     expect(calls.some((call) => call.join(" ") === "git add .")).toBe(true);
   });
 
+  test("init pulls existing agent-spec repository instead of creating numbered fallback", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".codex"), { recursive: true });
+
+    const calls: string[][] = [];
+    const result = await initCommand({
+      home,
+      workspace,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        if (command === "gh" && args.join(" ") === "repo create agent-spec --private") {
+          return { code: 1, stdout: "", stderr: "name already exists" };
+        }
+        if (command === "gh" && args.join(" ") === "repo view agent-spec --json name,url") {
+          return {
+            code: 0,
+            stdout: "{\"name\":\"agent-spec\",\"url\":\"https://github.com/octo/agent-spec\"}\n",
+            stderr: "",
+          };
+        }
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.mode).toBe("pulled");
+    expect(result.imported).toEqual([]);
+    expect(calls.map((call) => call.join(" "))).toEqual(
+      expect.arrayContaining([
+        "gh repo create agent-spec --private",
+        "gh repo view agent-spec --json name,url",
+      ]),
+    );
+    expect(calls).toContainEqual(["git", "clone", "https://github.com/octo/agent-spec", workspace]);
+    expect(calls.some((call) => call.join(" ") === "gh repo create agent-spec-01 --private")).toBe(false);
+  });
+
   test("init merges Claude Code, Codex, and OpenCode config into the workspace", async () => {
     const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
     const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));

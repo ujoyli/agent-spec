@@ -151,7 +151,7 @@ Example profiles:
 - `coding`
 - `review`
 
-Profiles can be revisited after the basic `init` and `sync` loop works.
+Profiles can be revisited after the basic `init`, `push`, and `pull` loop works.
 
 ### Adapters
 
@@ -177,14 +177,17 @@ MVP commands:
 
 ```bash
 agentspec init
+agentspec push
+agentspec pull
 agentspec doctor
-agentspec sync
 agentspec auth
 ```
 
-`agentspec init` should scan local Claude Code, Codex, and OpenCode configuration directories, normalize what it can into the Claude-based repository shape, create or connect a GitHub repository, commit the first version, and push it.
+`agentspec init` should scan local Claude Code, Codex, and OpenCode configuration directories, normalize what it can into the Claude-based repository shape, create or connect a GitHub repository, commit the first version, and push it. If the default repository already exists, `init` should recover it locally and behave like the first pull path instead of creating a numbered fallback.
 
-`agentspec sync` should pull the latest repository changes and apply the canonical Claude-based configuration to all supported tools found on the machine. The first supported tools are Claude Code, OpenCode, and Codex.
+`agentspec push` should scan local tool configuration, merge it into the canonical workspace, commit changed files, and push the repository.
+
+`agentspec pull` should pull the latest repository changes and apply the canonical Claude-based configuration to all supported tools found on the machine. The first supported tools are Claude Code, OpenCode, and Codex.
 
 `agentspec auth` should guide the user through GitHub authentication by delegating to the `gh` CLI.
 
@@ -206,7 +209,7 @@ For the MVP:
 - If the user is not authenticated, the CLI should guide them to run `gh auth login` or delegate through `agentspec auth`.
 - If the user does not already have a repository configured, Agent Spec should create one.
 - The default repository name should be `agent-spec`.
-- If `agent-spec` is unavailable, the CLI should try names such as `agent-spec-01`, `agent-spec-02`, and continue until a usable name is found.
+- If `agent-spec` already exists, the CLI should treat it as the user's existing Agent Spec repository and pull it locally.
 - The selected repository name should be stored locally so future commands know where to sync.
 
 ## Proposed Desktop UI
@@ -247,12 +250,13 @@ The first milestone should prove that Agent Spec can use Claude-style configurat
 Proposed MVP:
 
 - Implement `agentspec init`.
+- Implement `agentspec push`.
+- Implement `agentspec pull`.
 - Implement `agentspec auth`.
-- Implement `agentspec sync`.
 - Detect local Claude Code, Codex, and OpenCode configuration directories.
 - Import discovered configuration into a Claude-based repository layout.
 - Create a GitHub repository through `gh`, defaulting to `agent-spec`.
-- Fall back to numbered repository names such as `agent-spec-01` when needed.
+- Recover the existing `agent-spec` repository when it already exists.
 - Commit and push the initial configuration.
 - Pull and apply repository changes to supported local tools.
 - Write clear documentation and examples.
@@ -283,5 +287,5 @@ Agent Spec is successful if a user can:
 2. Implement local tool discovery for Claude Code, Codex, and OpenCode.
 3. Implement repository state and GitHub setup through `gh`.
 4. Implement `init`.
-5. Implement `sync`.
+5. Implement `push` and `pull`.
 6. Add examples and usage documentation.

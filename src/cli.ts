@@ -22,8 +22,8 @@ function helpText(): string {
     "",
     "Usage:",
     "  agentspec init [workspace] [--home <dir>]",
-    "  agentspec update [workspace] [--home <dir>]",
-    "  agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]",
+    "  agentspec push [workspace] [--home <dir>]",
+    "  agentspec pull [workspace] [--output-dir <dir>] [--home <dir>]",
     "  agentspec auth",
     "  agentspec doctor",
     "  agentspec --help",
@@ -62,18 +62,22 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
 
     if (command === "init") {
       const result = await initCommand({ home, workspace });
-      io.stdout(`Initialized ${result.createdRepository} with ${result.imported.length} imported files.`);
+      if (result.mode === "pulled") {
+        io.stdout(`Initialized from existing ${result.createdRepository} repository.`);
+      } else {
+        io.stdout(`Initialized ${result.createdRepository} with ${result.imported.length} imported files.`);
+      }
       return 0;
     }
 
-    if (command === "update") {
+    if (command === "push" || command === "update") {
       const result = await updateCommand({ home, workspace });
       const status = result.changed ? "Updated" : "No changes found after scanning";
       io.stdout(`${status} agent spec config with ${result.imported.length} imported files.`);
       return 0;
     }
 
-    if (command === "sync") {
+    if (command === "pull" || command === "sync") {
       const outputDir = optionValue(args, "--output-dir");
       const result = await syncCommand({
         home,

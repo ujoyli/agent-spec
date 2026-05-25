@@ -14,16 +14,17 @@ describe("runCli", () => {
 
     expect(code).toBe(0);
     expect(output.join("\n")).toContain("agentspec init");
-    expect(output.join("\n")).toContain("agentspec sync");
+    expect(output.join("\n")).toContain("agentspec push");
+    expect(output.join("\n")).toContain("agentspec pull");
   });
 
-  test("passes --output-dir to sync command", async () => {
+  test("passes --output-dir to pull command", async () => {
     const output: string[] = [];
     const sync = vi.spyOn(syncModule, "syncCommand").mockResolvedValue({
       syncedTargets: ["codex"],
     });
 
-    const code = await runCli(["sync", "/tmp/workspace", "--output-dir", "/tmp/converted"], {
+    const code = await runCli(["pull", "/tmp/workspace", "--output-dir", "/tmp/converted"], {
       stdout: (line) => output.push(line),
       stderr: (line) => output.push(line),
     });
@@ -39,7 +40,7 @@ describe("runCli", () => {
     sync.mockRestore();
   });
 
-  test("passes --home override to sync command", async () => {
+  test("keeps sync as a pull compatibility alias", async () => {
     const sync = vi.spyOn(syncModule, "syncCommand").mockResolvedValue({
       syncedTargets: [],
     });
@@ -60,7 +61,29 @@ describe("runCli", () => {
     sync.mockRestore();
   });
 
-  test("passes --home override to update command", async () => {
+  test("passes --home override to push command", async () => {
+    const update = vi.spyOn(updateModule, "updateCommand").mockResolvedValue({
+      imported: ["CLAUDE.md"],
+      changed: true,
+    });
+
+    const code = await runCli(["push", "/tmp/workspace", "--home", "/tmp/home"], {
+      stdout: () => undefined,
+      stderr: () => undefined,
+    });
+
+    expect(code).toBe(0);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        home: "/tmp/home",
+        workspace: "/tmp/workspace",
+      }),
+    );
+
+    update.mockRestore();
+  });
+
+  test("keeps update as a push compatibility alias", async () => {
     const update = vi.spyOn(updateModule, "updateCommand").mockResolvedValue({
       imported: ["CLAUDE.md"],
       changed: true,

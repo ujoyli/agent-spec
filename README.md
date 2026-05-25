@@ -2,7 +2,7 @@
 
 Agent Spec is a CLI-first open source project for managing AI agent configuration across tools.
 
-The current MVP treats Claude-style configuration as the canonical base, then helps import, update, and sync that configuration across:
+The current MVP treats Claude-style configuration as the canonical base, then helps import, push, and pull that configuration across:
 
 - Claude Code
 - Codex
@@ -27,7 +27,7 @@ Agent Spec gives those files one Git-backed home and provides adapters for the t
 
 ### Import and Merge
 
-`agentspec init` and `agentspec update` scan supported local tool config directories and merge them into one workspace.
+`agentspec init` and `agentspec push` scan supported local tool config directories and merge them into one workspace.
 
 Prompt files are appended into the canonical `CLAUDE.md` with source headings:
 
@@ -52,11 +52,11 @@ prompts/codex/AGENTS.md
 prompts/opencode/AGENTS.md
 ```
 
-Shared folders such as `skills/`, `mcp/`, and `plugins/` are also merged into the Claude-style workspace folders when present. This applies to both `init` and `update`, so changes made under Codex or OpenCode are still collected into the canonical Agent Spec repository.
+Shared folders such as `skills/`, `mcp/`, and `plugins/` are also merged into the Claude-style workspace folders when present. This applies to both `init` and `push`, so changes made under Codex or OpenCode are still collected into the canonical Agent Spec repository.
 
-### Sync
+### Pull
 
-`agentspec sync` applies the canonical workspace back to supported local tools.
+`agentspec pull` applies the canonical workspace back to supported local tools.
 
 By default it writes to discovered local tool config directories. For inspection or testing, use `--output-dir` to write converted files somewhere else.
 
@@ -105,8 +105,8 @@ agentspec auth
 
 ```bash
 agentspec init [workspace] [--home <dir>]
-agentspec update [workspace] [--home <dir>]
-agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]
+agentspec push [workspace] [--home <dir>]
+agentspec pull [workspace] [--output-dir <dir>] [--home <dir>]
 agentspec auth
 agentspec doctor
 agentspec --help
@@ -116,33 +116,37 @@ agentspec --help
 
 Scans supported local tool configuration, merges it into an Agent Spec workspace, creates a GitHub repository, commits the initial files, and pushes them.
 
-The default repository name is `agent-spec`. If that name already exists, Agent Spec tries numbered fallbacks such as `agent-spec-01`, `agent-spec-02`, and so on.
+The default repository name is `agent-spec`. If that repository already exists, Agent Spec treats it as an existing remote configuration repository and clones it into the requested workspace instead of creating a numbered fallback.
 
 ```bash
 agentspec init ~/agent-spec
 ```
 
-### `update`
+### `push`
 
 Pulls the workspace, rescans local configuration, merges changes, and pushes a new commit only when files changed.
 
 ```bash
-agentspec update ~/agent-spec
+agentspec push ~/agent-spec
 ```
 
-### `sync`
+`agentspec update` is currently kept as a compatibility alias for `agentspec push`.
+
+### `pull`
 
 Pulls the workspace and applies the canonical configuration to supported tools found on the machine.
 
 ```bash
-agentspec sync ~/agent-spec
+agentspec pull ~/agent-spec
 ```
 
 Inspect converted output without touching real tool config directories:
 
 ```bash
-agentspec sync ~/agent-spec --output-dir /tmp/agent-spec-output
+agentspec pull ~/agent-spec --output-dir /tmp/agent-spec-output
 ```
+
+`agentspec sync` is currently kept as a compatibility alias for `agentspec pull`.
 
 ### `auth`
 
@@ -180,8 +184,8 @@ Implemented:
 - Preservation of Codex/OpenCode prompt files.
 - Merging of `skills/`, `mcp/`, and `plugins/` into Claude-style workspace folders when present.
 - GitHub repository creation through `gh`.
-- Repository fallback naming.
-- `sync --output-dir` for safe inspection.
+- Existing repository recovery during `init`.
+- `pull --output-dir` for safe inspection.
 - Standalone binary build through Bun.
 
 Not implemented yet:

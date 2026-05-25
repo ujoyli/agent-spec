@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { createRepositoryWithFallback, ghAuthLogin } from "../src/core/github.js";
+import { createRepository, ghAuthLogin, viewRepository } from "../src/core/github.js";
 
 describe("github", () => {
   test("delegates auth login to gh", async () => {
@@ -13,25 +13,31 @@ describe("github", () => {
     expect(calls).toEqual([["gh", "auth", "login"]]);
   });
 
-  test("tries numbered repository names until creation succeeds", async () => {
+  test("creates repository with gh", async () => {
     const calls: string[][] = [];
 
-    const repo = await createRepositoryWithFallback(
-      "agent-spec",
-      async (command, args) => {
-        calls.push([command, ...args]);
-        if (args.includes("agent-spec") || args.includes("agent-spec-01")) {
-          return { code: 1, stdout: "", stderr: "name already exists" };
-        }
-        return { code: 0, stdout: "https://github.com/octo/agent-spec-02.git\n", stderr: "" };
-      },
-      3,
-    );
+    const repo = await createRepository("agent-spec", async (command, args) => {
+      calls.push([command, ...args]);
+      return { code: 0, stdout: "https://github.com/octo/agent-spec.git\n", stderr: "" };
+    });
 
     expect(repo).toEqual({
-      name: "agent-spec-02",
-      url: "https://github.com/octo/agent-spec-02.git",
+      name: "agent-spec",
+      url: "https://github.com/octo/agent-spec.git",
     });
-    expect(calls.map((call) => call[3])).toEqual(["agent-spec", "agent-spec-01", "agent-spec-02"]);
+    expect(calls).toEqual([["gh", "repo", "create", "agent-spec", "--private"]]);
+  });
+
+  test("views existing repository metadata", async () => {
+    const repo = await viewRepository("agent-spec", async () => ({
+      code: 0,
+      stdout: "{\"name\":\"agent-spec\",\"url\":\"https://github.com/octo/agent-spec\"}\n",
+      stderr: "",
+    }));
+
+    expect(repo).toEqual({
+      name: "agent-spec",
+      url: "https://github.com/octo/agent-spec",
+    });
   });
 });

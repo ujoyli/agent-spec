@@ -1,10 +1,11 @@
 import { mkdir } from "node:fs/promises";
 import { discoverTools } from "../core/discovery.js";
 import {
-  createRepositoryWithFallback,
+  createRepository,
   defaultRunner,
   git,
   type CommandRunner,
+  viewRepository,
 } from "../core/github.js";
 import { importToolConfigs } from "../core/copy.js";
 import { writeState } from "../core/state.js";
@@ -18,19 +19,39 @@ export interface InitOptions {
 export interface InitResult {
   createdRepository: string;
   imported: string[];
+  mode: "created" | "pulled";
 }
 
 export async function initCommand(options: InitOptions): Promise<InitResult> {
   const run = options.run ?? defaultRunner;
-  const tools = await discoverTools(options.home);
+  await mkdir(options.workspace, { recursive: true });
 
+  let repository: { name: string; url: string };
+  try {
+    repository = await createRepository("agent-spec", run);
+  } catch {
+    repository = await viewRepository("agent-spec", run);
+    await git(run, process.cwd(), ["clone", repository.url, options.workspace]);
+    await writeState(options.workspace, {
+      repository: {
+        name: repository.name,
+        url: repository.url,
+      },
+      workspace: options.workspace,
+    });
+    return {
+      createdRepository: repository.name,
+      imported: [],
+      mode: "pulled",
+    };
+  }
+
+  const tools = await discoverTools(options.home);
   if (tools.length === 0) {
     throw new Error("No supported agent configuration was found. Create Claude Code, Codex, or OpenCode config first.");
   }
 
-  await mkdir(options.workspace, { recursive: true });
   const imported = await importToolConfigs(tools, options.workspace);
-  const repository = await createRepositoryWithFallback("agent-spec", run);
 
   await writeState(options.workspace, {
     repository: {
@@ -50,5 +71,6 @@ export async function initCommand(options: InitOptions): Promise<InitResult> {
   return {
     createdRepository: repository.name,
     imported,
+    mode: "created",
   };
 }
