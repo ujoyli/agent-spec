@@ -1,5 +1,5 @@
 import { constants } from "node:fs";
-import { access, cp, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { access, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import type { TargetMapping, ToolPath } from "./paths.js";
 
@@ -136,6 +136,7 @@ export async function importToolConfigs(tools: ToolPath[], workspace: string): P
   const copied: string[] = [];
   const promptSections: Array<{ title: string; text: string }> = [];
   await mkdir(workspace, { recursive: true });
+  await rm(join(workspace, "prompts"), { recursive: true, force: true });
 
   for (const tool of tools) {
     const promptSource = join(tool.configDir, promptNameForTool(tool));
@@ -145,11 +146,6 @@ export async function importToolConfigs(tools: ToolPath[], workspace: string): P
 
       if (tool.name === "claude-code") {
         copied.push("CLAUDE.md");
-      } else {
-        const promptTarget = join(workspace, "prompts", tool.name, "AGENTS.md");
-        await mkdir(join(workspace, "prompts", tool.name), { recursive: true });
-        await cp(promptSource, promptTarget);
-        copied.push(toPortablePath(relative(workspace, promptTarget)));
       }
     }
 

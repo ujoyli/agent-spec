@@ -40,7 +40,6 @@ async function isConfigRepository(workspace: string): Promise<boolean> {
     "skills",
     "mcp",
     "plugins",
-    "prompts",
   ];
 
   for (const marker of markers) {

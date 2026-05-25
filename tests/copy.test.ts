@@ -49,9 +49,25 @@ describe("copy", () => {
       workspace,
     );
 
-    expect(copied).toEqual(["CLAUDE.md", "prompts/codex/AGENTS.md", "skills/debug/SKILL.md"]);
-    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
+    expect(copied).toEqual(["CLAUDE.md", "skills/debug/SKILL.md"]);
+    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toContain("Codex prompt");
+  });
+
+  test("removes stale prompt source copies from the workspace", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-copy-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-copy-workspace-"));
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await mkdir(join(workspace, "prompts", "codex"), { recursive: true });
+    await writeFile(join(home, ".codex", "AGENTS.md"), "Codex prompt");
+    await writeFile(join(workspace, "prompts", "codex", "AGENTS.md"), "stale");
+
+    await importToolConfigs(
+      [{ name: "codex", configDir: join(home, ".codex") }],
+      workspace,
+    );
+
+    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   test("merges prompt text from multiple tools into CLAUDE.md", async () => {

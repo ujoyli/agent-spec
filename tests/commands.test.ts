@@ -142,8 +142,6 @@ describe("commands", () => {
     expect(result.imported).toEqual(
       expect.arrayContaining([
         "CLAUDE.md",
-        "prompts/codex/AGENTS.md",
-        "prompts/opencode/AGENTS.md",
         "skills/review/SKILL.md",
         "skills/debug/SKILL.md",
         "skills/ship/SKILL.md",
@@ -153,7 +151,7 @@ describe("commands", () => {
     expect(mergedPrompt).toContain("Claude prompt");
     expect(mergedPrompt).toContain("Codex prompt");
     expect(mergedPrompt).toContain("OpenCode prompt");
-    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).resolves.toBe("Codex prompt");
+    await expect(readFile(join(workspace, "prompts", "codex", "AGENTS.md"), "utf8")).rejects.toMatchObject({ code: "ENOENT" });
     await expect(readFile(join(workspace, "skills", "debug", "SKILL.md"), "utf8")).resolves.toBe("Debug skill");
   });
 
@@ -178,7 +176,8 @@ describe("commands", () => {
       },
     });
 
-    expect(result.imported).toEqual(expect.arrayContaining(["CLAUDE.md", "prompts/codex/AGENTS.md"]));
+    expect(result.imported).toContain("CLAUDE.md");
+    expect(result.imported).not.toContain("prompts/codex/AGENTS.md");
     const mergedPrompt = await readFile(join(workspace, "CLAUDE.md"), "utf8");
     expect(mergedPrompt).toContain("Updated Claude prompt");
     expect(mergedPrompt).toContain("Updated Codex prompt");

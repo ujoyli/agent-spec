@@ -45,13 +45,6 @@ Prompt files are appended into the canonical `CLAUDE.md` with source headings:
 ...
 ```
 
-Original non-Claude prompts are also preserved:
-
-```text
-prompts/codex/AGENTS.md
-prompts/opencode/AGENTS.md
-```
-
 Shared folders such as `skills/`, `mcp/`, and `plugins/` are also merged into the Claude-style workspace folders when present. This applies to both `init` and `push`, so changes made under Codex or OpenCode are still collected into the canonical Agent Spec repository.
 
 ### Pull
@@ -188,7 +181,6 @@ Implemented:
 - CLI command dispatch.
 - Tool discovery for Claude Code, Codex, and OpenCode.
 - Prompt merge into canonical `CLAUDE.md`.
-- Preservation of Codex/OpenCode prompt files.
 - Merging of `skills/`, `mcp/`, and `plugins/` into Claude-style workspace folders when present.
 - GitHub repository creation through `gh`.
 - Existing repository recovery during `init`.
