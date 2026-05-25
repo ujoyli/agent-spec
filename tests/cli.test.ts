@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { describe, expect, test, vi } from "vitest";
 import { runCli } from "../src/cli.js";
 import * as syncModule from "../src/commands/sync.js";
@@ -32,8 +33,8 @@ describe("runCli", () => {
     expect(code).toBe(0);
     expect(sync).toHaveBeenCalledWith(
       expect.objectContaining({
-        workspace: "/tmp/workspace",
-        outputDir: "/tmp/converted",
+        workspace: resolve("/tmp/workspace"),
+        outputDir: resolve("/tmp/converted"),
       }),
     );
 
@@ -54,7 +55,7 @@ describe("runCli", () => {
     expect(sync).toHaveBeenCalledWith(
       expect.objectContaining({
         home: "/tmp/home",
-        workspace: "/tmp/workspace",
+        workspace: resolve("/tmp/workspace"),
       }),
     );
 
@@ -76,7 +77,7 @@ describe("runCli", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         home: "/tmp/home",
-        workspace: "/tmp/workspace",
+        workspace: resolve("/tmp/workspace"),
       }),
     );
 
@@ -98,7 +99,7 @@ describe("runCli", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         home: "/tmp/home",
-        workspace: "/tmp/workspace",
+        workspace: resolve("/tmp/workspace"),
       }),
     );
 

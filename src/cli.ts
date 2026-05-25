@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { authCommand } from "./commands/auth.js";
 import { initCommand } from "./commands/init.js";
 import { syncCommand } from "./commands/sync.js";
@@ -101,7 +102,11 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.argv[1] &&
+  (import.meta.url === `file://${process.argv[1]}` ||
+    fileURLToPath(import.meta.url) === resolve(process.argv[1]))
+) {
   const code = await runCli(process.argv.slice(2));
   process.exitCode = code;
 }
