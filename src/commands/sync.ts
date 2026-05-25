@@ -23,10 +23,6 @@ export async function syncCommand(options: SyncOptions): Promise<SyncResult> {
   const syncedTargets: ToolName[] = [];
 
   for (const tool of tools) {
-    if (tool.name === "claude-code") {
-      continue;
-    }
-
     const targetDir = options.outputDir ? join(options.outputDir, tool.name) : tool.configDir;
     await applyCanonicalToTarget(options.workspace, targetDir, targetMapping(tool.name));
     syncedTargets.push(tool.name);

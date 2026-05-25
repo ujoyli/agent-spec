@@ -252,9 +252,10 @@ describe("commands", () => {
     expect(calls.map((call) => call.join(" "))).not.toContain("git push");
   });
 
-  test("sync applies canonical config to discovered Codex and OpenCode targets", async () => {
+  test("sync applies canonical config to discovered Claude Code, Codex, and OpenCode targets", async () => {
     const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
     const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude"), { recursive: true });
     await mkdir(join(home, ".codex"), { recursive: true });
     await mkdir(join(home, ".config", "opencode"), { recursive: true });
     await writeFile(join(workspace, "CLAUDE.md"), "Base prompt");
@@ -265,7 +266,8 @@ describe("commands", () => {
       run: async () => ({ code: 0, stdout: "", stderr: "" }),
     });
 
-    expect(result.syncedTargets).toEqual(["codex", "opencode"]);
+    expect(result.syncedTargets).toEqual(["claude-code", "codex", "opencode"]);
+    await expect(readFile(join(home, ".claude", "CLAUDE.md"), "utf8")).resolves.toBe("Base prompt");
     await expect(readFile(join(home, ".codex", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
     await expect(readFile(join(home, ".config", "opencode", "AGENTS.md"), "utf8")).resolves.toBe("Base prompt");
   });

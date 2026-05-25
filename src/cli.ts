@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { constants } from "node:fs";
+import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,6 +8,7 @@ import { authCommand } from "./commands/auth.js";
 import { initCommand } from "./commands/init.js";
 import { syncCommand } from "./commands/sync.js";
 import { updateCommand } from "./commands/update.js";
+import { readGlobalState, statePath, writeGlobalState } from "./core/state.js";
 
 export interface CliIo {
   stdout: (line: string) => void;
@@ -25,6 +28,7 @@ function helpText(): string {
     "  agentspec init [workspace] [--home <dir>]",
     "  agentspec push [workspace] [--home <dir>]",
     "  agentspec pull [workspace] [--output-dir <dir>] [--home <dir>]",
+    "  agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]",
     "  agentspec auth",
     "  agentspec doctor",
     "  agentspec --help",
@@ -40,13 +44,42 @@ function optionValue(args: string[], name: string): string | undefined {
   return args[index + 1];
 }
 
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveWorkspace(
+  workspaceArg: string | undefined,
+  home: string,
+): Promise<string> {
+  if (workspaceArg) {
+    return resolve(workspaceArg);
+  }
+
+  const currentWorkspace = process.cwd();
+  if (await exists(statePath(currentWorkspace))) {
+    return currentWorkspace;
+  }
+
+  const globalState = await readGlobalState(home);
+  if (globalState.defaultWorkspace) {
+    return resolve(globalState.defaultWorkspace);
+  }
+
+  throw new Error("No Agent Spec workspace configured. Run agentspec init first, or pass a workspace path.");
+}
+
 export async function runCli(args: string[], io: CliIo = defaultIo): Promise<number> {
   const [command] = args;
   const valueOptions = new Set(["--output-dir", "--home"]);
   const workspaceArg = args.find(
     (arg, index) => index > 0 && !arg.startsWith("--") && !valueOptions.has(args[index - 1] ?? ""),
   );
-  const workspace = resolve(workspaceArg ?? process.cwd());
   const home = optionValue(args, "--home") ?? homedir();
 
   try {
@@ -62,7 +95,9 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
     }
 
     if (command === "init") {
+      const workspace = resolve(workspaceArg ?? process.cwd());
       const result = await initCommand({ home, workspace });
+      await writeGlobalState(home, { defaultWorkspace: workspace });
       if (result.mode === "pulled") {
         io.stdout(`Initialized from existing ${result.createdRepository} repository.`);
       } else {
@@ -72,6 +107,7 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
     }
 
     if (command === "push" || command === "update") {
+      const workspace = await resolveWorkspace(workspaceArg, home);
       const result = await updateCommand({ home, workspace });
       const status = result.changed ? "Updated" : "No changes found after scanning";
       io.stdout(`${status} agent spec config with ${result.imported.length} imported files.`);
@@ -79,6 +115,7 @@ export async function runCli(args: string[], io: CliIo = defaultIo): Promise<num
     }
 
     if (command === "pull" || command === "sync") {
+      const workspace = await resolveWorkspace(workspaceArg, home);
       const outputDir = optionValue(args, "--output-dir");
       const result = await syncCommand({
         home,
