@@ -51,7 +51,7 @@ Shared folders such as `skills/`, `mcp/`, and `plugins/` are also merged into th
 
 `agentspec pull` applies the canonical workspace back to supported local tools.
 
-After `agentspec init`, Agent Spec remembers the workspace in `~/.agent-spec/config.json`, so `agentspec pull` and `agentspec sync` can be run without passing a path. By default they pull the remote repository and overwrite discovered local tool config directories such as `~/.claude`, `~/.codex`, and `~/.config/opencode`. For inspection or testing, use `--output-dir` to write converted files somewhere else.
+Agent Spec stores its canonical workspace at `~/.agentspec`. By default, `agentspec pull` and `agentspec sync` pull that workspace repository and overwrite discovered local tool config directories such as `~/.claude`, `~/.codex`, and `~/.config/opencode`. For inspection or testing, use `--output-dir` to write converted files somewhere else.
 
 ## Install
 
@@ -104,10 +104,10 @@ agentspec auth
 ## Commands
 
 ```bash
-agentspec init [workspace] [--home <dir>]
-agentspec push [workspace] [--home <dir>]
-agentspec pull [workspace] [--output-dir <dir>] [--home <dir>]
-agentspec sync [workspace] [--output-dir <dir>] [--home <dir>]
+agentspec init [--offline]
+agentspec push
+agentspec pull [--output-dir <dir>]
+agentspec sync [--output-dir <dir>]
 agentspec auth
 agentspec doctor
 agentspec --help
@@ -117,12 +117,15 @@ agentspec --help
 
 Scans supported local tool configuration, merges it into an Agent Spec workspace, creates a GitHub repository, commits the initial files, and pushes them.
 
-After initialization, the workspace path is stored locally so future `push`, `pull`, and `sync` commands do not require a workspace argument.
+The workspace is always stored at `~/.agentspec`.
 
-The default repository name is `agent-spec`. If that repository already exists and looks like an Agent Spec configuration repository, Agent Spec clones it into the requested workspace. If it exists but appears to be a source repository or another unrelated project, Agent Spec falls back to numbered names such as `agent-spec-01`, `agent-spec-02`, and so on.
+Use `--offline` to skip GitHub repository creation and Git commands. Offline init only merges discovered local configuration into `~/.agentspec`.
+
+The default repository name is `agent-spec`. If that repository already exists and looks like an Agent Spec configuration repository, Agent Spec clones it into the home workspace. If it exists but appears to be a source repository or another unrelated project, Agent Spec falls back to numbered names such as `agent-spec-01`, `agent-spec-02`, and so on.
 
 ```bash
-agentspec init ~/agent-spec
+agentspec init
+agentspec init --offline
 ```
 
 ### `push`
@@ -131,12 +134,6 @@ Pulls the workspace, rescans local configuration, merges changes, and pushes a n
 
 ```bash
 agentspec push
-```
-
-Pass a workspace path to override the remembered default:
-
-```bash
-agentspec push ~/agent-spec
 ```
 
 `agentspec update` is currently kept as a compatibility alias for `agentspec push`.
@@ -150,16 +147,10 @@ agentspec pull
 agentspec sync
 ```
 
-Pass a workspace path to override the remembered default:
-
-```bash
-agentspec pull ~/agent-spec
-```
-
 Inspect converted output without touching real tool config directories:
 
 ```bash
-agentspec pull ~/agent-spec --output-dir /tmp/agent-spec-output
+agentspec pull --output-dir /tmp/agent-spec-output
 ```
 
 `agentspec sync` is currently kept as a compatibility alias for `agentspec pull`.
@@ -199,8 +190,9 @@ Implemented:
 - Prompt merge into canonical `CLAUDE.md`.
 - Merging of `skills/`, `mcp/`, and `plugins/` into Claude-style workspace folders when present.
 - GitHub repository creation through `gh`.
+- Offline init for local-only config merging.
 - Existing repository recovery during `init`.
-- Remembered default workspace after `init`.
+- Default home workspace at `~/.agentspec`.
 - `pull --output-dir` for safe inspection.
 - Standalone binary build through Bun.
 

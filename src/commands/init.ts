@@ -15,13 +15,14 @@ import { writeState } from "../core/state.js";
 export interface InitOptions {
   home: string;
   workspace: string;
+  offline?: boolean;
   run?: CommandRunner;
 }
 
 export interface InitResult {
-  createdRepository: string;
+  createdRepository?: string;
   imported: string[];
-  mode: "created" | "pulled";
+  mode: "created" | "pulled" | "offline";
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -74,6 +75,23 @@ async function createAvailableRepository(
 export async function initCommand(options: InitOptions): Promise<InitResult> {
   const run = options.run ?? defaultRunner;
   await mkdir(options.workspace, { recursive: true });
+
+  if (options.offline) {
+    const tools = await discoverTools(options.home);
+    if (tools.length === 0) {
+      throw new Error("No supported agent configuration was found. Create Claude Code, Codex, or OpenCode config first.");
+    }
+
+    const imported = await importToolConfigs(tools, options.workspace);
+    await writeState(options.workspace, {
+      workspace: options.workspace,
+    });
+
+    return {
+      imported,
+      mode: "offline",
+    };
+  }
 
   let repository: { name: string; url: string };
   let mode: "created" | "pulled" = "created";

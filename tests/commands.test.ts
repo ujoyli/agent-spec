@@ -33,6 +33,31 @@ describe("commands", () => {
     expect(calls.some((call) => call.join(" ") === "git add .")).toBe(true);
   });
 
+  test("init offline imports configs locally without creating repository", async () => {
+    const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
+    const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
+    await mkdir(join(home, ".claude", "skills", "review"), { recursive: true });
+    await writeFile(join(home, ".claude", "CLAUDE.md"), "Offline prompt");
+    await writeFile(join(home, ".claude", "skills", "review", "SKILL.md"), "Review skill");
+
+    const calls: string[][] = [];
+    const result = await initCommand({
+      home,
+      workspace,
+      offline: true,
+      run: async (command, args) => {
+        calls.push([command, ...args]);
+        return { code: 0, stdout: "", stderr: "" };
+      },
+    });
+
+    expect(result.mode).toBe("offline");
+    expect(result.imported).toEqual(expect.arrayContaining(["CLAUDE.md", "skills/review/SKILL.md"]));
+    await expect(readFile(join(workspace, "CLAUDE.md"), "utf8")).resolves.toContain("Offline prompt");
+    await expect(readFile(join(workspace, ".agent-spec.json"), "utf8")).resolves.toContain(workspace);
+    expect(calls).toEqual([]);
+  });
+
   test("init pulls existing agent-spec repository instead of creating numbered fallback", async () => {
     const home = await mkdtemp(join(tmpdir(), "agentspec-cmd-home-"));
     const workspace = await mkdtemp(join(tmpdir(), "agentspec-cmd-workspace-"));
